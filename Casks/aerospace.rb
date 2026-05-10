@@ -1,6 +1,6 @@
 cask "aerospace" do # version and sha256 are updated by .github/workflows/release.yml
-  version "0.0.0-placeholder"
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+  version "0.20.4-Beta"
+  sha256 "da9bb42cab5e29df9e12717140470dc96de4471820171f5f0d81dba9717b2947"
 
   url "https://github.com/0xACE/AeroSpace/releases/download/v#{version}/AeroSpace-v#{version}.zip"
   name "AeroSpace"

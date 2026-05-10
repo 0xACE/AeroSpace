@@ -1,0 +1,56 @@
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (e.g. 0.20.4-Beta)'
+        required: true
+        default: '0.20.4-Beta'
+
+jobs:
+  release:
+    name: release
+    runs-on: macos-15
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: ./.github/gh-actions-runner-xcode-select.sh
+
+      - run: brew install bash fish xcbeautify swiftly
+
+      - run: swiftly init --skip-install --assume-yes --verbose && swiftly install
+
+      - name: Build
+        run: ./build-release.sh --build-version "${{ github.event.inputs.version }}" --codesign-identity -
+
+      - name: cat xcodebuild.log
+        if: always()
+        run: 'if test -f ./.release/xcodebuild.log; then cat ./.release/xcodebuild.log; fi'
+
+      - name: Create GitHub release and upload zip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          gh release create "v$VERSION" \
+            ".release/AeroSpace-v$VERSION.zip" \
+            --title "AeroSpace v$VERSION" \
+            --notes "Built from source with ad-hoc signing (--codesign-identity -)."
+
+      - name: Update cask sha256 and commit
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          SHA=$(shasum -a 256 ".release/AeroSpace-v$VERSION.zip" | awk '{print $1}')
+
+          sed -i '' "s/version \"[^\"]*\"/version \"$VERSION\"/" Casks/aerospace.rb
+          sed -i '' "s/sha256 \"[^\"]*\"/sha256 \"$SHA\"/" Casks/aerospace.rb
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/aerospace.rb
+          git commit -m "chore: update cask to v$VERSION"
+          git push
